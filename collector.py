@@ -77,29 +77,53 @@ def process_and_save(item_id, created_utc, subreddit, raw_text):
     finally:
         conn.close()
 
+def fetch_historical_backlog(subreddit, limit=100):
+    """Fetches recent items on startup so you don't start with an empty database."""
+    print(f"Bootstrapping: Fetching up to {limit} recent posts & comments...")
+    count = 0
+    
+    for post in subreddit.new(limit=limit):
+        full_text = f"{post.title}. {post.selftext}"
+        process_and_save(f"post_{post.id}", post.created_utc, post.subreddit.display_name, full_text)
+        count += 1
+
+    for comment in subreddit.comments(limit=limit):
+        process_and_save(f"comm_{comment.id}", comment.created_utc, comment.subreddit.display_name, comment.body)
+        count += 1
+
+    print(f"Initial backfill complete. Processed {count} items.")
+
 def main():
     init_db()
-    print("Connecting to live Reddit comment & submission streams...")
     subreddit = reddit.subreddit(TARGET_SUBREDDITS)
     
-    # Non-blocking continuous polling loop
+    fetch_historical_backlog(subreddit, limit=100)
+
+    print("\nListening for brand-new live items (heartbeat logs every 30s)...")
+    last_heartbeat = time.time()
+    
     while True:
         try:
-            # Stream comments
+            # Check comment stream
             for comment in subreddit.stream.comments(skip_existing=True, pause_after=5):
                 if comment is None:
                     break
-                process_and_save(comment.id, comment.created_utc, comment.subreddit.display_name, comment.body)
-            
-            # Stream posts
+                process_and_save(f"comm_{comment.id}", comment.created_utc, comment.subreddit.display_name, comment.body)
+
+            # Check submission stream
             for post in subreddit.stream.submissions(skip_existing=True, pause_after=5):
                 if post is None:
                     break
-                full_post_text = f"{post.title}. {post.selftext}"
-                process_and_save(post.id, post.created_utc, post.subreddit.display_name, full_post_text)
+                full_text = f"{post.title}. {post.selftext}"
+                process_and_save(f"post_{post.id}", post.created_utc, post.subreddit.display_name, full_text)
+
+            # Heartbeat printout so you know it's not frozen
+            if time.time() - last_heartbeat > 30:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Polling... still connected and waiting for new mentions.")
+                last_heartbeat = time.time()
 
         except Exception as e:
-            print(f"Stream error occurred: {e}. Retrying in 10 seconds...")
+            print(f"Network/Stream error: {e}. Reconnecting in 10s...")
             time.sleep(10)
 
 if __name__ == "__main__":
