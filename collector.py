@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import praw
 from transformers import pipeline
 
-DB_PATH = "cloudflare_pulse.db"
+DB_PATH = "reddit.db"
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -39,7 +39,7 @@ reddit = praw.Reddit(
     user_agent="org.quantumbadger.redreader/1.26"
 )
 
-TARGET_SUBREDDITS = "cloudflare+sysadmin+webdev"
+TARGET_SUBREDDITS = "cloudflare+sysadmin+aws+googlecloud+azure+devops+msp"
 
 def clean_text(text: str) -> str:
     # Drop URLs and markdown clutter; keep words and punctuation intact
@@ -97,7 +97,7 @@ def main():
     init_db()
     subreddit = reddit.subreddit(TARGET_SUBREDDITS)
     
-    fetch_historical_backlog(subreddit, limit=100)
+    fetch_historical_backlog(subreddit, limit=1000)
 
     print("\nListening for brand-new live items (heartbeat logs every 30s)...")
     last_heartbeat = time.time()

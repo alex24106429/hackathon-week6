@@ -3,12 +3,11 @@ import sqlite3
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Cloudflare Pulse — Live SRE Radar", layout="wide")
+st.set_page_config(page_title="Live SRE Radar", layout="wide")
 
-st.title("Cloudflare Infrastructure Health Pulse")
-st.caption("SDG 9: Industry, Innovation, and Infrastructure | Pre-trained Transformer Pipeline")
+st.title("Infrastructure Health Pulse")
 
-conn = sqlite3.connect("cloudflare_pulse.db")
+conn = sqlite3.connect("reddit.db")
 df = pd.read_sql("SELECT * FROM reddit_items", conn)
 conn.close()
 
